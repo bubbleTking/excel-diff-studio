@@ -42,6 +42,11 @@ NS = {
 }
 
 
+WINDOWS_PATH_RE = re.compile(
+    r"^(?:[a-zA-Z]:\\|\\\\|//|\\\\\?\\|\\\\\.\\|[a-zA-Z]:/)"
+)
+
+
 @dataclass(frozen=True)
 class WorkbookData:
     sheets: dict[str, dict[str, Any]]
@@ -489,10 +494,29 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def is_windows_like_path(value: str) -> bool:
+    return bool(WINDOWS_PATH_RE.match(value))
+
+
+def strip_wrapping_quotes(value: str) -> str:
+    while len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1].strip()
+    return value
+
+
 def clean_path_input(raw: str) -> Path:
     value = raw.strip()
     if not value:
         return Path("")
+
+    value = value.strip("\ufeff")
+
+    # PowerShell often represents a dragged or copied path as:
+    #   & "C:\path\file.xlsx"
+    # or:
+    #   & "\\server\share\file.xlsx"
+    if value.startswith("& "):
+        value = value[2:].strip()
 
     assignment = None
     if not value.lower().startswith("file://"):
@@ -500,14 +524,16 @@ def clean_path_input(raw: str) -> Path:
     if assignment:
         value = assignment.group(1).strip()
 
-    while len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-        value = value[1:-1].strip()
+    value = strip_wrapping_quotes(value)
+
+    # Handle Python-ish raw string notation if someone copies r"...".
+    if len(value) >= 3 and value[0] in {"r", "R"} and value[1] in {"'", '"'}:
+        value = strip_wrapping_quotes(value[1:].strip())
 
     if value.startswith("file://"):
         value = urllib.parse.unquote(urllib.parse.urlparse(value).path)
 
-    is_windows_path = bool(re.match(r"^[a-zA-Z]:\\", value)) or value.startswith("\\\\")
-    if os.name != "nt" and not is_windows_path:
+    if os.name != "nt" and not is_windows_like_path(value):
         # macOS/Linux terminals often escape dragged paths as "My\\ File.xlsx".
         value = re.sub(r"\\([\\ ()\[\]{}&;'\"$`!#*?<>|])", r"\1", value)
 
@@ -521,8 +547,10 @@ def ask_for_path(label: str) -> Path:
         path = clean_path_input(raw)
         if path.exists():
             return path
-        print(f"File not found: {path}")
-        print("Tip: paste the full path, for example C:\\Users\\Name\\Desktop\\file.xlsx")
+        print(f"File not found after parsing: {path}")
+        print(f"Original input was: {raw}")
+        print("Tip: local path example: C:\\Users\\Name\\Desktop\\file.xlsx")
+        print("Tip: shared drive example: \\\\ServerName\\ShareName\\file.xlsx")
 
 
 def fill_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
