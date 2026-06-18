@@ -24,9 +24,11 @@ from __future__ import annotations
 
 import argparse
 import html
-import shlex
+import os
 import posixpath
+import re
 import sys
+import urllib.parse
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -492,16 +494,24 @@ def clean_path_input(raw: str) -> Path:
     if not value:
         return Path("")
 
-    try:
-        parts = shlex.split(value)
-    except ValueError:
-        parts = []
+    assignment = None
+    if not value.lower().startswith("file://"):
+        assignment = re.match(r"^(?:path|file|路径)\s*=\s*(.+)$", value, re.IGNORECASE)
+    if assignment:
+        value = assignment.group(1).strip()
 
-    if len(parts) == 1:
-        value = parts[0]
-    else:
-        value = value.strip("\"'")
+    while len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1].strip()
 
+    if value.startswith("file://"):
+        value = urllib.parse.unquote(urllib.parse.urlparse(value).path)
+
+    is_windows_path = bool(re.match(r"^[a-zA-Z]:\\", value)) or value.startswith("\\\\")
+    if os.name != "nt" and not is_windows_path:
+        # macOS/Linux terminals often escape dragged paths as "My\\ File.xlsx".
+        value = re.sub(r"\\([\\ ()\[\]{}&;'\"$`!#*?<>|])", r"\1", value)
+
+    value = os.path.expandvars(value)
     return Path(value).expanduser()
 
 
@@ -512,6 +522,7 @@ def ask_for_path(label: str) -> Path:
         if path.exists():
             return path
         print(f"File not found: {path}")
+        print("Tip: paste the full path, for example C:\\Users\\Name\\Desktop\\file.xlsx")
 
 
 def fill_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
