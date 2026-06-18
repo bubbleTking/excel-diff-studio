@@ -473,7 +473,7 @@ def parse_args() -> argparse.Namespace:
         "-o",
         "--output",
         type=Path,
-        default=Path("excel_compare_report.html"),
+        default=None,
         help="HTML report path. Default: excel_compare_report.html",
     )
     parser.add_argument(
@@ -566,17 +566,17 @@ def fill_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
     if not args.file2:
         args.file2 = ask_for_path("File 2 path")
 
-    output = input(
-        f"Output report path [default: {args.output}]: "
-    ).strip()
-    if output:
-        args.output = clean_path_input(output)
+    if args.output is None:
+        args.output = Path("excel_compare_report.html")
+        print(f"Report will be saved as: {args.output}")
 
     return args
 
 
 def main() -> int:
     args = fill_interactive_args(parse_args())
+    if args.output is None:
+        args.output = Path("excel_compare_report.html")
 
     if not args.file1.exists():
         print(f"File not found: {args.file1}", file=sys.stderr)
