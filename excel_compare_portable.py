@@ -248,6 +248,7 @@ def write_report(
     file2: Path,
     differences: list[Difference],
 ) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     sheet_counts: dict[str, int] = {}
     for diff in differences:
         sheet_counts[diff.sheet] = sheet_counts.get(diff.sheet, 0) + 1
@@ -483,7 +484,7 @@ def parse_args() -> argparse.Namespace:
         "--output",
         type=Path,
         default=None,
-        help="HTML report path. Default: excel_compare_report.html",
+        help="HTML report path. Default: ~/Downloads/excel_compare_report.html",
     )
     parser.add_argument(
         "--data-only",
@@ -501,6 +502,11 @@ def parse_args() -> argparse.Namespace:
         help="Treat empty strings and blank cells as different.",
     )
     return parser.parse_args()
+
+
+def default_report_path() -> Path:
+    downloads = Path.home() / "Downloads"
+    return downloads / "excel_compare_report.html"
 
 
 def is_windows_like_path(value: str) -> bool:
@@ -576,7 +582,7 @@ def fill_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
         args.file2 = ask_for_path("File 2 path")
 
     if args.output is None:
-        args.output = Path("excel_compare_report.html")
+        args.output = default_report_path()
         print(f"Report will be saved as: {args.output}")
 
     return args
@@ -585,7 +591,7 @@ def fill_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
 def main() -> int:
     args = fill_interactive_args(parse_args())
     if args.output is None:
-        args.output = Path("excel_compare_report.html")
+        args.output = default_report_path()
 
     if not args.file1.exists():
         print(f"File not found: {args.file1}", file=sys.stderr)

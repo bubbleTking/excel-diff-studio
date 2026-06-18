@@ -76,10 +76,22 @@ node test-smoke.mjs
 python3 excel_compare_portable.py
 ```
 
+Windows 用户也可以直接双击：
+
+```text
+run_excel_compare_windows.bat
+```
+
+默认报告会保存到用户的 Downloads 文件夹：
+
+```text
+Downloads/excel_compare_report.html
+```
+
 也可以继续用命令行参数：
 
 ```bash
 python3 excel_compare_portable.py file1.xlsx file2.xlsx
 ```
 
-It generates a local visual HTML report by default.
+It generates a local visual HTML report in the user's Downloads folder by default.
