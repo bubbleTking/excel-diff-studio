@@ -5,3 +5,4 @@ __pycache__/
 *.log
 *.zip
 *_report.html
+.netlify/

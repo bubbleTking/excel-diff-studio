@@ -8,6 +8,7 @@ No third-party packages are required. This script uses only Python's standard
 library, so it is easy to copy to another computer.
 
 Usage:
+  python3 excel_compare_portable.py
   python3 excel_compare_portable.py file1.xlsx file2.xlsx
   python3 excel_compare_portable.py file1.xlsx file2.xlsx -o report.html
   python3 excel_compare_portable.py file1.xlsx file2.xlsx --data-only
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import shlex
 import posixpath
 import sys
 import zipfile
@@ -458,8 +460,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compare two .xlsx files and generate a visual HTML report."
     )
-    parser.add_argument("file1", type=Path, help="First .xlsx file")
-    parser.add_argument("file2", type=Path, help="Second .xlsx file")
+    parser.add_argument("file1", nargs="?", type=Path, help="First .xlsx file")
+    parser.add_argument("file2", nargs="?", type=Path, help="Second .xlsx file")
     parser.add_argument(
         "-o",
         "--output",
@@ -485,8 +487,57 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def clean_path_input(raw: str) -> Path:
+    value = raw.strip()
+    if not value:
+        return Path("")
+
+    try:
+        parts = shlex.split(value)
+    except ValueError:
+        parts = []
+
+    if len(parts) == 1:
+        value = parts[0]
+    else:
+        value = value.strip("\"'")
+
+    return Path(value).expanduser()
+
+
+def ask_for_path(label: str) -> Path:
+    while True:
+        raw = input(f"{label}: ").strip()
+        path = clean_path_input(raw)
+        if path.exists():
+            return path
+        print(f"File not found: {path}")
+
+
+def fill_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
+    if args.file1 and args.file2:
+        return args
+
+    print("Excel Compare Portable")
+    print("Paste the file path, or drag the .xlsx file into this terminal.")
+    print()
+
+    if not args.file1:
+        args.file1 = ask_for_path("File 1 path")
+    if not args.file2:
+        args.file2 = ask_for_path("File 2 path")
+
+    output = input(
+        f"Output report path [default: {args.output}]: "
+    ).strip()
+    if output:
+        args.output = clean_path_input(output)
+
+    return args
+
+
 def main() -> int:
-    args = parse_args()
+    args = fill_interactive_args(parse_args())
 
     if not args.file1.exists():
         print(f"File not found: {args.file1}", file=sys.stderr)

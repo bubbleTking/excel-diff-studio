@@ -65,3 +65,21 @@ npm run build
 ```bash
 node test-smoke.mjs
 ```
+
+## Portable Python Script
+
+如果只想在另一台电脑上跑 Excel 比较，可以复制 `excel_compare_portable.py`。它只依赖 Python 标准库，不需要安装第三方包。
+
+直接运行后按提示粘贴或拖入两个 `.xlsx` 文件路径：
+
+```bash
+python3 excel_compare_portable.py
+```
+
+也可以继续用命令行参数：
+
+```bash
+python3 excel_compare_portable.py file1.xlsx file2.xlsx
+```
+
+It generates a local visual HTML report by default.
