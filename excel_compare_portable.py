@@ -91,8 +91,17 @@ def load_workbook_relationships(zf: zipfile.ZipFile) -> dict[str, str]:
         target = rel.attrib.get("Target")
         if not rel_id or not target:
             continue
-        relationships[rel_id] = posixpath.normpath(posixpath.join("xl", target))
+        relationships[rel_id] = normalize_workbook_target(target)
     return relationships
+
+
+def normalize_workbook_target(target: str) -> str:
+    target = urllib.parse.unquote(target).replace("\\", "/")
+    if target.startswith("/"):
+        target = target.lstrip("/")
+    elif not target.startswith("xl/"):
+        target = posixpath.join("xl", target)
+    return posixpath.normpath(target)
 
 
 def load_sheet_paths(zf: zipfile.ZipFile) -> list[tuple[str, str]]:
